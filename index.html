@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Total Care ABA · ADP Payroll Export</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  :root {
+    --navy: #14325c;
+    --teal: #1a8a8a;
+    --teal-dark: #136f6f;
+    --teal-soft: #e6f4f3;
+    --ink: #1c2633;
+    --muted: #5d6b7b;
+    --line: #e2e8ef;
+    --bg: #f5f7fa;
+    --card: #ffffff;
+    --danger: #b42318;
+    --danger-soft: #fef3f2;
+    --warn: #93600a;
+    --warn-soft: #fff8e6;
+    --ok: #127a4b;
+    --ok-soft: #ecfdf3;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  header {
+    background: var(--navy);
+    color: #fff;
+  }
+  .bar {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 18px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .mark {
+    width: 38px; height: 38px; border-radius: 10px;
+    background: var(--teal);
+    display: grid; place-items: center;
+    font-weight: 700; font-size: 15px; letter-spacing: .5px;
+  }
+  .brand-name { font-weight: 600; font-size: 17px; line-height: 1.2; }
+  .brand-sub { font-size: 13px; color: #b9c7da; }
+  .user { font-size: 13px; color: #d4deea; display: flex; align-items: center; gap: 12px; }
+  .user button {
+    background: transparent; border: 1px solid #4a6489; color: #fff;
+    border-radius: 8px; padding: 5px 10px; font: inherit; cursor: pointer;
+  }
+  .user button:hover { background: #1d406f; }
+
+  main { max-width: 880px; margin: 0 auto; padding: 32px 16px 48px; }
+  h1 { font-size: 24px; margin: 0 0 6px; color: var(--navy); font-weight: 700; }
+  .lede { color: var(--muted); margin: 0 0 24px; max-width: 640px; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 24px;
+    box-shadow: 0 1px 2px rgba(20, 50, 92, .04);
+  }
+  .card + .card { margin-top: 20px; }
+
+  .step { display: flex; gap: 14px; }
+  .step + .step { margin-top: 22px; padding-top: 22px; border-top: 1px solid var(--line); }
+  .num {
+    flex: none; width: 28px; height: 28px; border-radius: 50%;
+    background: var(--teal-soft); color: var(--teal-dark);
+    font-weight: 600; font-size: 14px; display: grid; place-items: center;
+  }
+  .step.done .num { background: var(--teal); color: #fff; }
+  .step.locked { opacity: .5; pointer-events: none; }
+  .step-body { flex: 1; min-width: 0; }
+  .step-title { font-weight: 600; margin: 3px 0 4px; }
+  .hint { color: var(--muted); font-size: 13px; margin: 0 0 12px; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    border: 0; border-radius: 10px; padding: 11px 18px;
+    font: inherit; font-weight: 600; cursor: pointer;
+    background: var(--teal); color: #fff;
+    transition: background .15s;
+  }
+  .btn:hover { background: var(--teal-dark); }
+  .btn:disabled { background: #9fb4b4; cursor: not-allowed; }
+  .btn.secondary { background: #fff; color: var(--navy); border: 1px solid var(--line); }
+  .btn.secondary:hover { background: var(--bg); }
+
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  select {
+    font: inherit; padding: 10px 12px; border-radius: 10px;
+    border: 1px solid #cdd6e0; background: #fff; color: var(--ink);
+    min-width: 280px; max-width: 100%;
+  }
+  select:focus, .btn:focus-visible { outline: 3px solid #a6d8d6; outline-offset: 1px; }
+
+  .status {
+    margin-top: 16px; padding: 12px 14px; border-radius: 10px;
+    font-size: 14px; display: none;
+  }
+  .status.show { display: block; }
+  .status.info { background: var(--teal-soft); color: var(--teal-dark); }
+  .status.ok { background: var(--ok-soft); color: var(--ok); }
+  .status.warn { background: var(--warn-soft); color: var(--warn); }
+  .status.error { background: var(--danger-soft); color: var(--danger); }
+
+  .spinner {
+    width: 14px; height: 14px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,.5); border-top-color: #fff;
+    animation: spin .8s linear infinite; display: none;
+  }
+  .busy .spinner { display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .summary h2 { font-size: 16px; margin: 0 0 4px; color: var(--navy); }
+  .summary .hint { margin-bottom: 16px; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); font-weight: 600; }
+  td.num-cell, th.num-cell { text-align: right; font-variant-numeric: tabular-nums; }
+  tr.total td { font-weight: 600; border-bottom: 0; }
+  .pill {
+    display: inline-block; padding: 1px 8px; border-radius: 999px;
+    font-size: 12px; font-weight: 600;
+  }
+  .pill.warn { background: var(--warn-soft); color: var(--warn); }
+  .pill.ok { background: var(--ok-soft); color: var(--ok); }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+
+  footer { max-width: 880px; margin: 0 auto; padding: 0 16px 32px; color: var(--muted); font-size: 12px; }
+
+  @media (max-width: 560px) {
+    .brand-sub { display: none; }
+    .card { padding: 18px; }
+    select, .row .btn { width: 100%; min-width: 0; justify-content: center; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <div class="brand">
+      <div class="mark" aria-hidden="true">TC</div>
+      <div>
+        <div class="brand-name">Total Care ABA</div>
+        <div class="brand-sub">Payroll Operations</div>
+      </div>
+    </div>
+    <div class="user" id="user" hidden>
+      <span id="user-email"></span>
+      <button type="button" id="signout">Sign out</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <h1>ADP Payroll Export</h1>
+  <p class="lede">Choose a pay period and download the ADP import files. You get one file per state, built from the latest payroll data in BigQuery.</p>
+
+  <section class="card">
+    <div class="step" id="step-signin">
+      <div class="num">1</div>
+      <div class="step-body">
+        <div class="step-title">Sign in with your Google account</div>
+        <p class="hint">Your account needs access to the Total Care ABA payroll data.</p>
+        <button class="btn" id="signin" type="button">Sign in with Google</button>
+      </div>
+    </div>
+
+    <div class="step locked" id="step-export">
+      <div class="num">2</div>
+      <div class="step-body">
+        <div class="step-title">Choose a pay period and download</div>
+        <p class="hint">The ZIP has one ADP file per state, plus a list of anyone who couldn't be included.</p>
+        <div class="row">
+          <label for="period" class="sr-only" style="position:absolute;left:-9999px">Pay period</label>
+          <select id="period" disabled><option>Loading pay periods…</option></select>
+          <button class="btn" id="download" type="button" disabled>
+            <span class="spinner" aria-hidden="true"></span>
+            <span class="label">Download ZIP</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="status" id="status" role="status" aria-live="polite"></div>
+  </section>
+
+  <section class="card summary" id="summary" hidden>
+    <h2 id="summary-title"></h2>
+    <p class="hint" id="summary-hint"></p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>State</th><th>ADP company</th><th>File</th><th class="num-cell">Employees</th></tr>
+        </thead>
+        <tbody id="summary-body"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<footer>
+  Data comes live from BigQuery <code>payroll_mart.adp_payroll_export_vw</code>. Nothing is stored on this page.
+</footer>
+
+<script>
+const CONFIG = {
+  // OAuth 2.0 Web client ID from Google Cloud Console (APIs & Services > Credentials)
+  clientId: 'REPLACE_WITH_CLIENT_ID.apps.googleusercontent.com',
+  projectId: 'total-care-aba-462720',
+  location: 'US',
+  view: 'total-care-aba-462720.payroll_mart.adp_payroll_export_vw',
+  maxBytesBilled: String(20 * 1e9), // hard cost cap per query
+  periodsToShow: 36,
+};
+
+// BigQuery reads the source CSVs in Cloud Storage with the signed-in user's
+// credentials, so the token needs a read-only storage scope as well.
+const SCOPES = [
+  'https://www.googleapis.com/auth/bigquery.readonly',
+  'https://www.googleapis.com/auth/devstorage.read_only',
+  'openid', 'email',
+].join(' ');
+
+// ADP's template repeats header names, so they're written here, not taken from the view.
+const ADP_HEADERS = [
+  'Co Code', 'Batch ID', 'File #', 'Tax Frequency', 'Temp Dept', 'Temp Rate',
+  'Reg Hours', 'O/T Hours',
+  'Hours 3 Code', 'Hours 3 Amount', 'Hours 3 Code', 'Hours 3 Amount',
+  'Hours 3 Code', 'Hours 3 Amount', 'Hours 3 Code', 'Hours 3 Amount',
+  'Hours 4 Code', 'Hours 4 Amount', 'Hours 4 Code', 'Hours 4 Amount',
+  'Hours 4 Code', 'Hours 4 Amount', 'Hours 4 Code', 'Hours 4 Amount',
+  'Reg Earnings', 'O/T Earnings',
+  'Earnings 5 Code', 'Earnings 5 Amount', 'Earnings 5 Code', 'Earnings 5 Amount',
+  'Cancel Pay', 'Other Period Beginning Date', 'Other Period Ending Date',
+];
+const HELPER_COLUMNS = new Set([
+  'pay_period_start', 'pay_period_end', 'ee_id',
+  'provider_first_name', 'provider_last_name', 'provider_state',
+]);
+
+const $ = (id) => document.getElementById(id);
+let tokenClient = null;
+let accessToken = null;
+let tokenExpiresAt = 0;
+let pendingToken = null;
+
+// ---------- status ----------
+function setStatus(kind, html) {
+  const el = $('status');
+  el.className = 'status show ' + kind;
+  el.innerHTML = html;
+}
+function clearStatus() { $('status').className = 'status'; }
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// ---------- auth ----------
+function initAuth() {
+  if (!window.google || !google.accounts || !google.accounts.oauth2) {
+    setTimeout(initAuth, 150);
+    return;
+  }
+  if (CONFIG.clientId.startsWith('REPLACE')) {
+    setStatus('error', 'This page isn\'t set up yet: the Google sign-in client ID is missing.');
+    $('signin').disabled = true;
+    return;
+  }
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CONFIG.clientId,
+    scope: SCOPES,
+    callback: (resp) => {
+      const p = pendingToken; pendingToken = null;
+      if (resp.error) { p && p.reject(new Error(resp.error)); return; }
+      accessToken = resp.access_token;
+      tokenExpiresAt = Date.now() + (Number(resp.expires_in) - 60) * 1000;
+      p && p.resolve(accessToken);
+    },
+    error_callback: (err) => {
+      const p = pendingToken; pendingToken = null;
+      p && p.reject(new Error(err && err.type === 'popup_closed' ? 'Sign-in was cancelled.' : 'Sign-in failed.'));
+    },
+  });
+}
+
+function requestToken(prompt) {
+  return new Promise((resolve, reject) => {
+    pendingToken = { resolve, reject };
+    tokenClient.requestAccessToken({ prompt });
+  });
+}
+
+async function getToken() {
+  if (accessToken && Date.now() < tokenExpiresAt) return accessToken;
+  return requestToken('');
+}
+
+async function signIn() {
+  clearStatus();
+  try {
+    await requestToken('');
+    const info = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: 'Bearer ' + accessToken },
+    }).then((r) => (r.ok ? r.json() : {}));
+    $('user-email').textContent = info.email || 'Signed in';
+    $('user').hidden = false;
+    $('step-signin').classList.add('done');
+    $('signin').textContent = 'Signed in';
+    $('signin').disabled = true;
+    $('step-export').classList.remove('locked');
+    await loadPeriods();
+  } catch (e) {
+    setStatus('error', esc(e.message));
+  }
+}
+
+function signOut() {
+  if (accessToken) google.accounts.oauth2.revoke(accessToken, () => {});
+  accessToken = null; tokenExpiresAt = 0;
+  location.reload();
+}
+
+// ---------- BigQuery ----------
+async function bqFetch(url, opts = {}) {
+  const token = await getToken();
+  const resp = await fetch(url, {
+    ...opts,
+    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+  });
+  const body = await resp.json().catch(() => ({}));
+  if (!resp.ok) {
+    const msg = (body.error && body.error.message) || resp.statusText;
+    if (resp.status === 401) { accessToken = null; }
+    if (resp.status === 403 || resp.status === 404) {
+      throw new Error('Your Google account doesn\'t have access to the payroll data. Ask your administrator for access. (' + msg + ')');
+    }
+    throw new Error(msg);
+  }
+  return body;
+}
+
+async function runQuery(sql, params = []) {
+  const base = `https://bigquery.googleapis.com/bigquery/v2/projects/${CONFIG.projectId}/queries`;
+  let res = await bqFetch(base, {
+    method: 'POST',
+    body: JSON.stringify({
+      query: sql,
+      useLegacySql: false,
+      location: CONFIG.location,
+      parameterMode: 'NAMED',
+      queryParameters: params,
+      maximumBytesBilled: CONFIG.maxBytesBilled,
+      timeoutMs: 30000,
+      maxResults: 10000,
+    }),
+  });
+  const jobId = res.jobReference.jobId;
+  const resultsUrl = (pageToken) =>
+    `${base}/${jobId}?location=${CONFIG.location}&timeoutMs=30000&maxResults=10000` +
+    (pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : '');
+
+  while (!res.jobComplete) res = await bqFetch(resultsUrl());
+
+  const fields = res.schema.fields.map((f) => f.name);
+  const rows = [];
+  const add = (r) => (r.rows || []).forEach((row) => {
+    const obj = {};
+    row.f.forEach((cell, i) => { obj[fields[i]] = cell.v; });
+    rows.push(obj);
+  });
+  add(res);
+  while (res.pageToken) {
+    res = await bqFetch(resultsUrl(res.pageToken));
+    add(res);
+  }
+  return { fields, rows };
+}
+
+// ---------- pay periods ----------
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function fmtDate(iso, withYear) {
+  const [y, m, d] = iso.split('-').map(Number);
+  return `${MONTHS[m - 1]} ${d}` + (withYear ? `, ${y}` : '');
+}
+function periodLabel(start, end) {
+  return `${fmtDate(start)} – ${fmtDate(end, true)}`;
+}
+function todayIso() {
+  const t = new Date();
+  return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+}
+
+async function loadPeriods() {
+  const sel = $('period');
+  sel.disabled = true;
+  setStatus('info', 'Loading pay periods…');
+  try {
+    const { rows } = await runQuery(
+      `SELECT DISTINCT CAST(pay_period_start AS STRING) AS s, CAST(pay_period_end AS STRING) AS e
+       FROM \`${CONFIG.view}\`
+       ORDER BY s DESC
+       LIMIT ${CONFIG.periodsToShow}`
+    );
+    if (!rows.length) throw new Error('No pay periods found.');
+    const today = todayIso();
+    sel.innerHTML = '';
+    rows.forEach((r) => {
+      const opt = document.createElement('option');
+      opt.value = r.s;
+      opt.dataset.end = r.e;
+      opt.textContent = periodLabel(r.s, r.e) + (today >= r.s && today <= r.e ? '  (in progress)' : '');
+      sel.appendChild(opt);
+    });
+    sel.disabled = false;
+    $('download').disabled = false;
+    clearStatus();
+  } catch (e) {
+    sel.innerHTML = '<option>Couldn\'t load pay periods</option>';
+    setStatus('error', esc(e.message));
+  }
+}
+
+// ---------- export ----------
+function csvCell(v) {
+  const s = v == null ? '' : String(v);
+  return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+function toCsv(rows) {
+  return rows.map((r) => r.map(csvCell).join(',')).join('\r\n') + '\r\n';
+}
+
+async function download() {
+  const sel = $('period');
+  const start = sel.value;
+  const end = sel.selectedOptions[0].dataset.end;
+  const btn = $('download');
+  btn.disabled = true; sel.disabled = true;
+  btn.classList.add('busy');
+  btn.querySelector('.label').textContent = 'Preparing…';
+  $('summary').hidden = true;
+  setStatus('info', `Getting payroll for ${esc(periodLabel(start, end))} from BigQuery…`);
+
+  try {
+    const { fields, rows } = await runQuery(
+      `SELECT * FROM \`${CONFIG.view}\`
+       WHERE pay_period_start = @start
+       ORDER BY co_code, provider_last_name, provider_first_name`,
+      [{ name: 'start', parameterType: { type: 'DATE' }, parameterValue: { value: start } }]
+    );
+    const adpColumns = fields.filter((f) => !HELPER_COLUMNS.has(f));
+    if (adpColumns.length !== ADP_HEADERS.length) {
+      throw new Error(`The data has ${adpColumns.length} ADP columns but the ADP template has ${ADP_HEADERS.length}. Nothing was downloaded. Contact your administrator.`);
+    }
+    if (!rows.length) throw new Error('This pay period has no payroll rows.');
+
+    // one file per state; rows ADP can't import go to issues.csv
+    const byState = new Map();
+    const issues = [];
+    rows.forEach((r) => {
+      const reasons = [];
+      if (!r.co_code) reasons.push('No ADP company code for this state');
+      if (!r.file_number) reasons.push('No employee number (File #)');
+      if (reasons.length) {
+        issues.push([r.provider_state, r.ee_id, r.provider_first_name, r.provider_last_name,
+          reasons.join('; '), r.reg_hours, r.ot_hours]);
+        return;
+      }
+      const key = r.provider_state;
+      if (!byState.has(key)) byState.set(key, { coCode: r.co_code, rows: [] });
+      byState.get(key).rows.push(adpColumns.map((c) => r[c]));
+    });
+
+    const zip = new JSZip();
+    const summary = [];
+    [...byState.entries()].sort((a, b) => a[0].localeCompare(b[0])).forEach(([state, g]) => {
+      const name = `PR${g.coCode}EPI.csv`; // ADP's import file naming
+      zip.file(name, toCsv([ADP_HEADERS, ...g.rows]));
+      summary.push({ state, coCode: g.coCode, name, n: g.rows.length });
+    });
+    if (issues.length) {
+      zip.file('NOT_EXPORTED_issues.csv', toCsv([
+        ['State', 'Employee ID', 'First Name', 'Last Name', 'Issue', 'Reg Hours', 'O/T Hours'],
+        ...issues,
+      ]));
+    }
+
+    const zipName = `TotalCareABA_ADP_Payroll_${start}_to_${end}.zip`;
+    const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = zipName;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+
+    renderSummary(start, end, zipName, summary, issues.length);
+    if (issues.length) {
+      setStatus('warn', `Downloaded <strong>${esc(zipName)}</strong>. <strong>${issues.length}</strong> ${issues.length === 1 ? 'employee was' : 'employees were'} left out because ADP can't import them. They're listed in <code>NOT_EXPORTED_issues.csv</code> in the ZIP.`);
+    } else {
+      setStatus('ok', `Downloaded <strong>${esc(zipName)}</strong>. Every employee was included.`);
+    }
+  } catch (e) {
+    setStatus('error', esc(e.message));
+  } finally {
+    btn.disabled = false; sel.disabled = false;
+    btn.classList.remove('busy');
+    btn.querySelector('.label').textContent = 'Download ZIP';
+  }
+}
+
+function renderSummary(start, end, zipName, summary, issueCount) {
+  const total = summary.reduce((s, x) => s + x.n, 0);
+  $('summary-title').textContent = `Pay period ${periodLabel(start, end)}`;
+  $('summary-hint').innerHTML = `${esc(zipName)} · ${summary.length} state files · ` +
+    (issueCount
+      ? `<span class="pill warn">${issueCount} not exported</span>`
+      : '<span class="pill ok">All employees included</span>');
+  $('summary-body').innerHTML = summary.map((x) =>
+    `<tr><td>${esc(x.state)}</td><td>${esc(x.coCode)}</td><td><code>${esc(x.name)}</code></td><td class="num-cell">${x.n.toLocaleString()}</td></tr>`
+  ).join('') + `<tr class="total"><td colspan="3">Total</td><td class="num-cell">${total.toLocaleString()}</td></tr>`;
+  $('summary').hidden = false;
+}
+
+$('signin').addEventListener('click', () => {
+  if (!tokenClient) { setStatus('error', 'Google sign-in is still loading. Try again in a moment.'); return; }
+  signIn();
+});
+$('signout').addEventListener('click', signOut);
+$('download').addEventListener('click', download);
+initAuth();
+</script>
+</body>
+</html>
