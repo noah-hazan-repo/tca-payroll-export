@@ -191,7 +191,7 @@
       <div class="num">2</div>
       <div class="step-body">
         <div class="step-title">Choose a pay period and download</div>
-        <p class="hint">The ZIP has one ADP file per state, plus a list of anyone who couldn't be included.</p>
+        <p class="hint">The ZIP has one ADP file per state, plus a list of anyone who needs a fix before import.</p>
         <div class="row">
           <label for="period" class="sr-only" style="position:absolute;left:-9999px">Pay period</label>
           <select id="period" disabled><option>Loading pay periods…</option></select>
@@ -471,34 +471,35 @@ async function download() {
     }
     if (!rows.length) throw new Error('This pay period has no payroll rows.');
 
-    // one file per state; rows ADP can't import go to issues.csv
+    // everyone goes in their state's file; rows that need a fix before the
+    // ADP import are also listed in ISSUES_review_before_import.csv
     const byState = new Map();
     const issues = [];
     rows.forEach((r) => {
       const reasons = [];
       if (!r.co_code) reasons.push('No ADP company code for this state');
       if (!r.file_number) reasons.push('No employee number (File #)');
-      if (Number(r.hours_code_count) > 4) reasons.push('More than 4 hours codes (ADP file has 4 slots)');
+      if (Number(r.hours_code_count) > 4) reasons.push('More than 4 hours codes; only the first 4 are in the file');
+      const values = adpColumns.map((c) => r[c]);
       if (reasons.length) {
         issues.push([r.provider_state, r.ee_id, r.provider_first_name, r.provider_last_name,
-          reasons.join('; '), r.reg_hours, r.ot_hours]);
-        return;
+          reasons.join('; '), ...values]);
       }
-      const key = r.provider_state;
+      const key = r.provider_state || 'Unknown';
       if (!byState.has(key)) byState.set(key, { coCode: r.co_code, rows: [] });
-      byState.get(key).rows.push(adpColumns.map((c) => r[c]));
+      byState.get(key).rows.push(values);
     });
 
     const zip = new JSZip();
     const summary = [];
     [...byState.entries()].sort((a, b) => a[0].localeCompare(b[0])).forEach(([state, g]) => {
-      const name = `EPI${g.coCode}AA.csv`; // same naming as the file that imports
+      const name = g.coCode ? `EPI${g.coCode}AA.csv` : `EPI_${state}_NO_CO_CODE.csv`;
       zip.file(name, toCsv([ADP_HEADERS, ...g.rows]));
       summary.push({ state, coCode: g.coCode, name, n: g.rows.length });
     });
     if (issues.length) {
-      zip.file('NOT_EXPORTED_issues.csv', toCsv([
-        ['State', 'Employee ID', 'First Name', 'Last Name', 'Issue', 'Reg Hours', 'O/T Hours'],
+      zip.file('ISSUES_review_before_import.csv', toCsv([
+        ['State', 'Employee ID', 'First Name', 'Last Name', 'Issue', ...ADP_HEADERS],
         ...issues,
       ]));
     }
@@ -513,9 +514,9 @@ async function download() {
 
     renderSummary(start, end, zipName, summary, issues.length);
     if (issues.length) {
-      setStatus('warn', `Downloaded <strong>${esc(zipName)}</strong>. <strong>${issues.length}</strong> ${issues.length === 1 ? 'employee was' : 'employees were'} left out because ADP can't import them. They're listed in <code>NOT_EXPORTED_issues.csv</code> in the ZIP.`);
+      setStatus('warn', `Downloaded <strong>${esc(zipName)}</strong>. <strong>${issues.length}</strong> ${issues.length === 1 ? 'employee needs' : 'employees need'} a fix before the ADP import (e.g. no File #). They're in their state files and also listed in <code>ISSUES_review_before_import.csv</code>.`);
     } else {
-      setStatus('ok', `Downloaded <strong>${esc(zipName)}</strong>. Every employee was included.`);
+      setStatus('ok', `Downloaded <strong>${esc(zipName)}</strong>. Every employee is ready to import.`);
     }
   } catch (e) {
     setStatus('error', esc(e.message));
@@ -531,10 +532,10 @@ function renderSummary(start, end, zipName, summary, issueCount) {
   $('summary-title').textContent = `Pay period ${periodLabel(start, end)}`;
   $('summary-hint').innerHTML = `${esc(zipName)} · ${summary.length} state files · ` +
     (issueCount
-      ? `<span class="pill warn">${issueCount} not exported</span>`
-      : '<span class="pill ok">All employees included</span>');
+      ? `<span class="pill warn">${issueCount} to review</span>`
+      : '<span class="pill ok">No issues</span>');
   $('summary-body').innerHTML = summary.map((x) =>
-    `<tr><td>${esc(x.state)}</td><td>${esc(x.coCode)}</td><td><code>${esc(x.name)}</code></td><td class="num-cell">${x.n.toLocaleString()}</td></tr>`
+    `<tr><td>${esc(x.state)}</td><td>${esc(x.coCode || '—')}</td><td><code>${esc(x.name)}</code></td><td class="num-cell">${x.n.toLocaleString()}</td></tr>`
   ).join('') + `<tr class="total"><td colspan="3">Total</td><td class="num-cell">${total.toLocaleString()}</td></tr>`;
   $('summary').hidden = false;
 }
