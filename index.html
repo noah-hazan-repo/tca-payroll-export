@@ -246,12 +246,13 @@ const SCOPES = [
 // Exact header row of the file that imports into ADP (EPI2REAA.csv). ADP repeats
 // header names, so they're written here, not taken from the view.
 const ADP_HEADERS = [
-  'Co Code', 'Batch ID', 'File #', 'Pay #', 'Temp Dept', 'Temp Rate',
+  'Co Code', 'Batch ID', 'File #',
+  'CentralReach ID', // extra column HR asked for (ee_id), next to File #
+  'Pay #', 'Temp Dept', 'Temp Rate',
   'Reg Hours', 'O/T Hours',
   'Hours 3 Code', 'Hours 3 Amount', 'Hours 3 Code', 'Hours 3 Amount',
   'Hours 3 Code', 'Hours 3 Amount', 'Hours 3 Code', 'Hours 3 Amount',
   'Memo Code', 'Memo Amount',
-  'CentralReach ID', // extra column HR asked for (ee_id); not in the ADP file
 ];
 const HELPER_COLUMNS = new Set([
   'pay_period_start', 'pay_period_end', 'ee_id',
