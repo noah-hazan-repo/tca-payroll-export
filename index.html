@@ -221,7 +221,7 @@
 </main>
 
 <footer>
-  Data comes live from BigQuery <code>payroll_mart.adp_payroll_export_vw</code>. Nothing is stored on this page.
+  Data comes live from BigQuery <code>payroll_mart.adp_epi_vw</code>. Nothing is stored on this page.
 </footer>
 
 <script>
@@ -230,7 +230,7 @@ const CONFIG = {
   clientId: 'REPLACE_WITH_CLIENT_ID.apps.googleusercontent.com',
   projectId: 'total-care-aba-462720',
   location: 'US',
-  view: 'total-care-aba-462720.payroll_mart.adp_payroll_export_vw',
+  view: 'total-care-aba-462720.payroll_mart.adp_epi_vw',
   maxBytesBilled: String(20 * 1e9), // hard cost cap per query
   periodsToShow: 36,
 };
@@ -243,21 +243,19 @@ const SCOPES = [
   'openid', 'email',
 ].join(' ');
 
-// ADP's template repeats header names, so they're written here, not taken from the view.
+// Exact header row of the file that imports into ADP (EPI2REAA.csv). ADP repeats
+// header names, so they're written here, not taken from the view.
 const ADP_HEADERS = [
-  'Co Code', 'Batch ID', 'File #', 'Tax Frequency', 'Temp Dept', 'Temp Rate',
+  'Co Code', 'Batch ID', 'File #', 'Pay #', 'Temp Dept', 'Temp Rate',
   'Reg Hours', 'O/T Hours',
   'Hours 3 Code', 'Hours 3 Amount', 'Hours 3 Code', 'Hours 3 Amount',
   'Hours 3 Code', 'Hours 3 Amount', 'Hours 3 Code', 'Hours 3 Amount',
-  'Hours 4 Code', 'Hours 4 Amount', 'Hours 4 Code', 'Hours 4 Amount',
-  'Hours 4 Code', 'Hours 4 Amount', 'Hours 4 Code', 'Hours 4 Amount',
-  'Reg Earnings', 'O/T Earnings',
-  'Earnings 5 Code', 'Earnings 5 Amount', 'Earnings 5 Code', 'Earnings 5 Amount',
-  'Cancel Pay', 'Other Period Beginning Date', 'Other Period Ending Date',
+  'Memo Code', 'Memo Amount',
 ];
 const HELPER_COLUMNS = new Set([
   'pay_period_start', 'pay_period_end', 'ee_id',
   'provider_first_name', 'provider_last_name', 'provider_state',
+  'hours_code_count',
 ]);
 
 const $ = (id) => document.getElementById(id);
@@ -480,6 +478,7 @@ async function download() {
       const reasons = [];
       if (!r.co_code) reasons.push('No ADP company code for this state');
       if (!r.file_number) reasons.push('No employee number (File #)');
+      if (Number(r.hours_code_count) > 4) reasons.push('More than 4 hours codes (ADP file has 4 slots)');
       if (reasons.length) {
         issues.push([r.provider_state, r.ee_id, r.provider_first_name, r.provider_last_name,
           reasons.join('; '), r.reg_hours, r.ot_hours]);
@@ -493,7 +492,7 @@ async function download() {
     const zip = new JSZip();
     const summary = [];
     [...byState.entries()].sort((a, b) => a[0].localeCompare(b[0])).forEach(([state, g]) => {
-      const name = `PR${g.coCode}EPI.csv`; // ADP's import file naming
+      const name = `EPI${g.coCode}AA.csv`; // same naming as the file that imports
       zip.file(name, toCsv([ADP_HEADERS, ...g.rows]));
       summary.push({ state, coCode: g.coCode, name, n: g.rows.length });
     });

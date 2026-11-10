@@ -1,8 +1,8 @@
 # Total Care ABA – ADP Payroll Export
 
 A single static page (`index.html`). After you sign in with Google, it queries
-`payroll_mart.adp_payroll_export_vw` in BigQuery for the pay period you pick and
-downloads a ZIP with one ADP import file per state (`PR<co code>EPI.csv`), plus
+`payroll_mart.adp_epi_vw` in BigQuery for the pay period you pick and
+downloads a ZIP with one ADP import file per state (`EPI<co code>AA.csv`, same layout as the EPI2REAA.csv file that imports), plus
 `NOT_EXPORTED_issues.csv` for rows ADP can't import.
 
 The page contains no data or credentials. Every query runs as the signed-in
